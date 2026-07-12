@@ -30,29 +30,49 @@
 
     function setInputText(text) {
         try {
-            // 优先使用 SillyTavern API
-            if (window.SillyTavern && window.SillyTavern.getContext) {
-                const ctx = window.SillyTavern.getContext();
+            const parentWin = window.parent; 
+
+            if (parentWin && parentWin.SillyTavern && parentWin.SillyTavern.getContext) {
+                const ctx = parentWin.SillyTavern.getContext();
                 if (ctx && typeof ctx.setInputText === 'function') {
                     ctx.setInputText(text);
-                    console.log('[纯纯面板] ✅ 已通过API插入');
+                    console.log('[纯纯面板] ✅ 已通过父窗口API插入');
                     return;
                 }
             }
 
-            // 回退到 DOM 操作
+            if (parentWin) {
+                const textarea = parentWin.document.querySelector('#send_textarea');
+                if (textarea) {
+                    textarea.value = text;
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    textarea.focus();
+                    console.log('[纯纯面板] ✅ 已通过父窗口DOM插入');
+                    return;
+                }
+            }
+
+            if (window.SillyTavern && window.SillyTavern.getContext) {
+                const ctx = window.SillyTavern.getContext();
+                if (ctx && typeof ctx.setInputText === 'function') {
+                    ctx.setInputText(text);
+                    console.log('[纯纯面板] ✅ 已通过当前窗口API插入');
+                    return;
+                }
+            }
+
             const textarea = document.querySelector('#send_textarea');
             if (textarea) {
                 textarea.value = text;
                 textarea.dispatchEvent(new Event('input', { bubbles: true }));
                 textarea.focus();
-                console.log('[纯纯面板] ✅ 已通过DOM插入');
+                console.log('[纯纯面板] ✅ 已通过当前窗口DOM插入');
                 return;
             }
 
             navigator.clipboard.writeText(text).then(() => {
                 console.warn('[纯纯面板] ⚠️ 已复制到剪贴板');
-                // 显示轻提示
+                // 轻提示
                 const toast = document.createElement('div');
                 toast.textContent = '📋 已复制到剪贴板，请粘贴到输入框';
                 toast.style.cssText = `
